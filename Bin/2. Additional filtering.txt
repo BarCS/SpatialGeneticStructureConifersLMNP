@@ -1,0 +1,30 @@
+# De novo assembly filtering included the following commands:
+--min-alleles 2 --max-alleles 2 --remove-filtered-all --max-missing 0.2 --remove-indels --mac 1 --recode --recode-INFO-all -p 1 -r 0.1 
+# --remove-indels # Include or exclude sites that contain an indel. For these options "indel" means any variant that alters the length of the REF allele
+
+#### Abies religiosa
+# This file is called abies_clean.vcf and it excluded the individuals with low reads (< 1 millon)
+
+# To filter the simples from La Malinche National Park with enough reads (48 individuals of Abies religiosa)
+vcftools --vcf ./DataAbies/abies_clean.vcf --keep ./DataAbies/MalincheAbiesHighReads.txt --recode --out ./DataAbies/Abies_Malinche 
+
+# the out file is called: Abies_Malinche.recode.vcf
+
+
+# Final filtering
+vcftools --vcf ./DataAbies/Abies_Malinche.recode.vcf --recode --recode-INFO-all --min-meanDP 10 --max-meanDP 196 --max-missing 0.8 --maf 0.01 --out ./DataAbies/AbiesMalincheHighReads_80miss
+# The out file is called: AbiesMalincheHighReads_80miss.recode.vcf
+# --min-meanDP: 10x includes only sites with a depth value ≥ mean depth value 
+# --max-meanDP: 196 includes only sites between 10 and 196 of depth, this parameter is useful to avoid paralogues genes. 
+# --max-missing 0.8 removes missing data, it keeps the snps with a 20% of max missing data 
+# --maf 0.01 includes only sites with a frequency ≥ 0.01
+
+
+### Pinus montezumae
+# We filtered the Pinus simples (70 trees).
+vcftools --vcf ./DataPinus/pinus_clean.vcf --keep ./DataPinus/MalinchePinusHighReads.txt --recode --out ./DataPinus/Pinus_Malinche # the out file is Pinus_Malinche.recode.vcf
+
+# Final filtering
+vcftools --vcf ./DataPinus/Pinus_Malinche.recode.vcf --recode --recode-INFO-all --min-meanDP 10 --max-meanDP 306 --max-missing 0.8 --maf 0.01 --out ./DataPinus/PinusMalincheHighReads_80miss
+# The out file is: PinusMalincheHighReads_80miss.recode.vcf
+# --max-meanDP: 306 includes only the sites between 0 and 306 of depth.

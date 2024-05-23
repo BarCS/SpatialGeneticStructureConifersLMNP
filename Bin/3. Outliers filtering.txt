@@ -1,0 +1,14 @@
+# Outliers filtering
+# Abies religiosa
+
+vcftools --vcf <input vcf file> --snps <variant IDs file> --positions <variant positions file> --recode --out <output vcf file>
+
+vcftools --vcf ./AbiesMalincheHighReads_80miss.recode.vcf --exclude-positions ./OutliersAbies.txt --recode --out ./SNPAbiesNeutrales
+
+
+vcftools --vcf {dir} --exclude-positions ./Data/OutliersAbies.txt --recode --out ./DataAbies/SNPAbiesNeutrales
+
+# Pinus montezumae
+
+vcftools --vcf ./PinusMalincheHighReads_80miss.recode.vcf --exclude-positions ./OutliersPinus.txt --recode --out ./SNPPinusNeutrales
+

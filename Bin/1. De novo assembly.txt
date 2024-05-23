@@ -1,0 +1,126 @@
+These are the UNIX command lines used in slurm batch files.
+Replace with the appropriate variable where a $() is used.
+See the STACKS manual for more details.
+
+
+Stage 1. Removing sequence adapters with cutadapt
+
+dir="/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059"
+
+cd ${dir}/data
+out=${dir}/trimmed
+
+cutadapt -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCA -A AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT
+-o $out/plate_1_trimmed_R1.fastq.gz -p $out/plate_1_trimmed_R2.fastq.gz
+Plate_1_R1.fastq.gz plate_1_R2.fastq.gz
+-m 100
+
+
+Stage 2. Demultiplexing samples with process_radtags
+
+in=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/trimmed
+bc=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/barcodes
+sp=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/samples_${SLURM_ARRAY_TASK_ID}
+
+process_radtags -i gzfastq -1 $in/plate_1_trimmed_R1.fastq.gz -2 $in/plate_1_trimmed_R2.fastq.gz \
+-o $sp -b ${bc}/barcodes_plate_1_txt --inline_null \
+-t 125 --len_limit 125 --renz_1 pstI --renz_2 mspI -r -c -q
+
+
+
+ 
+Stage 3: ustacks. Building loci de novo in each sample for the single-end reads only. If paired-end reads are available, they will be integrated in a later stage (tsv2bam stage).
+
+species=abies,picea
+
+sp=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/samples_${species}
+
+cd /project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/stacks_${species}
+
+mkdir M3
+
+out=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/stacks_${species}/M3
+
+cd $sp
+
+id=1
+for sample in $(ls -1 *.1.fq.gz | sed 's/.1.fq.gz//')
+do
+	ustacks -f ${sample}.1.fq.gz -o ${out} -i $id --name $sample -m 3 -M 3 -p 4
+	let "id+=1"
+done
+
+
+
+Stage 4. cstacks. Building the catalog of loci available in the metapopulation from the samples contained in the population map.
+
+species=abies,picea
+
+stacks=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/stacks_${species}/M3
+pops=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/popmaps/pop_${species}
+
+cd $stacks
+
+cstacks -n 3 -P ${stacks} -M ${pops} -p 4
+
+
+ 
+Stage 5. sstacks. Match all samples supplied in the population map against the catalog.
+
+species=abies,picea
+
+stacks=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/stacks_${species}/M3
+pops=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/popmaps/pop_${species}
+
+cd $stacks
+
+sstacks -P ${stacks} -M $pops -p 4
+
+
+Stage 6. tsv2bam. transpose the data so it is stored by locus, instead of by sample. We will include paired-end reads using tsv2bam
+
+species=abies,picea
+
+sp=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/samples_${species}
+stacks=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/stacks_${species}/M3
+pops=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/popmaps/pop_${species}
+
+cd $stacks
+
+tsv2bam -P ${stacks} -M $pops --pe-reads-dir $sp -t 4
+
+
+ 
+Stage 7. gstacks. build a paired-end contig from the metapopulation data (if paired-reads provided), align reads per sample, call variant sites in the population, genotypes in each individual.
+
+species=abies,picea
+
+stacks=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/stacks_${species}/M3
+pops=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/popmaps/pop_${species}
+
+cd $stacks
+
+gstacks -P ${stacks} -M $pops -t 4
+
+
+Stage 8. populations. Calculate Hardy-Weinberg deviation, population statistics, f-statistics export several output files.
+
+species=abies,picea
+
+stacks=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/stacks_${species}/M3
+pops=/project/bioinfo/users/jelar5/consultations/barbara_cruz/2021083010000059/popmaps/pop_${species}
+
+cd $stacks
+
+populations -P ${stacks} -M $pops -p 1 -r 0.1 --vcf -t 4
+
+
+Stage 9. vcftools. To filter variants and to keep only valuable SNPs
+
+file=abies_M3_populations.snps,picea_M3_populations.snps
+
+vcftools --vcf $file.vcf --remove-filtered-all --remove-indels --max-missing 0.2 --mac 1 --min-alleles 2 --max-alleles 2 --recode --recode-INFO-all --out ${file}_clean
+
+outputs:
+abies_M3_populations.snps_clean.vcf
+picea_M3_populations.snps_clean.vcf

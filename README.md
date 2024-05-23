@@ -1,5 +1,3 @@
-This is a repository where you can find all the information of manuscript **Spatial genetic structure of two conifers in a highly human-modified landscape of central Mexico**, co-authored by Bárbara Cruz-Salazar, Alejandro Flores-Manzanero, Yendi Navarro-Nota and Yessica Rico.
-
 There are two folders: 1. `Data`, with the main database; and 2.`Bin`, where are the scripts used to filter the data.
 
 In folder `Data` the following files:
